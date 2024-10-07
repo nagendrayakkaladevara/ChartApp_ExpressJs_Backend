@@ -14,10 +14,10 @@ const basicAuth = async (req, res, next) => {
 
     try {
         const user = await User.findOne({ phone });
-        if (!user) return res.status(401).json({ msg: 'Invalid credentials' });
+        if (!user) return res.status(401).json({ msg: 'User not registered, please register first' });
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(401).json({ msg: 'Invalid credentials' });
+        if (!isMatch) return res.status(401).json({ msg: 'Invalid credentials, please try again' });
 
         // Attach user information to the request object
         req.user = user; // Store user info for later use in the request
