@@ -1,6 +1,18 @@
 const bcrypt = require('bcryptjs');
 // const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const { z } = require('zod');
+
+
+const registerSchema = z.object({
+    firstName: z.string().min(1, 'First name is required').max(40, 'First name is too long'),
+    secondName: z.string().max(40, 'Second name is too long').optional(),
+    lastName: z.string().min(1, 'Last name is required').max(40, 'Last name is too long'),
+    email: z.string().email('Invalid email format'),
+    phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number is too long'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    dateOfBirth: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid date format'),
+});
 
 
 // older register - v1
@@ -28,33 +40,81 @@ const User = require('../models/userModel');
 
 // new register includes name, date of birth - v2
 
-exports.register = async (req, res) => {
-    const { name, phone, password, dateOfBirth } = req.body;
+// exports.register = async (req, res) => {
+//     const { name, phone, password, dateOfBirth } = req.body;
 
+//     try {
+
+//         let user = await User.findOne({ phone });
+//         if (user) {
+//             return res.status(400).json({ msg: 'User with this phone number already exists' });
+//         }
+
+//         let nameCheck = await User.findOne({ name });
+//         if (nameCheck) {
+//             return res.status(400).json({ msg: 'This username is already taken' });
+//         }
+
+//         const hashedPassword = await bcrypt.hash(password, 10);
+//         user = new User({
+//             name,
+//             phone,
+//             password: hashedPassword,
+//             dateOfBirth
+//         });
+
+//         await user.save();
+
+//         res.status(201).json({ msg: 'User registered successfully' });
+//     } catch (err) {
+//         console.error('Error registering user:', err);
+//         res.status(500).json({ msg: 'Server error' });
+//     }
+// };
+
+
+// zod & V3 signIn
+exports.register = async (req, res) => {
     try {
+        const validatedData = registerSchema.parse(req.body);
+
+        const { firstName, secondName, lastName, email, phone, password, dateOfBirth } = validatedData;
 
         let user = await User.findOne({ phone });
         if (user) {
             return res.status(400).json({ msg: 'User with this phone number already exists' });
         }
 
-        let nameCheck = await User.findOne({ name });
+        let emailCheck = await User.findOne({ email });
+        if (emailCheck) {
+            return res.status(400).json({ msg: 'User with this email already exists' });
+        }
+
+        let nameCheck = await User.findOne({ firstName, lastName });
         if (nameCheck) {
-            return res.status(400).json({ msg: 'This username is already taken' });
+            return res.status(400).json({ msg: 'This combination of first name and last name is already taken' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+
         user = new User({
-            name,
+            firstName,
+            secondName: secondName || '',
+            lastName,
+            email,
             phone,
             password: hashedPassword,
-            dateOfBirth
+            dateOfBirth: new Date(dateOfBirth)
         });
 
         await user.save();
 
         res.status(201).json({ msg: 'User registered successfully' });
     } catch (err) {
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({ msg: 'Validation error', errors: err.errors });
+        }
+
         console.error('Error registering user:', err);
         res.status(500).json({ msg: 'Server error' });
     }

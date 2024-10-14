@@ -18,7 +18,7 @@ const io = socketIo(server, {
 
 // Connect to MongoDB
 connectDB();
- 
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -26,7 +26,7 @@ app.use(express.json());
 // Routes - (version on routes)
 app.use('/v1/api/auth', authRoutes);
 app.use('/v1/api/messages', messageRoutes);
-app.use('/v1/api/user',userRoutes)
+app.use('/v1/api/user', userRoutes)
 
 // Handle Socket.io 
 // io.on('connection', (socket) => {
@@ -72,21 +72,29 @@ app.use('/v1/api/user',userRoutes)
 io.on('connection', (socket) => {
     console.log('New user connected');
 
-    socket.on('join', ({ phone }) => {  // Changed to handle phone correctly
+    socket.on('join', ({ phone }) => { 
         socket.join(phone);
         console.log(`User joined room: ${phone}`);
     });
 
-    socket.on('message', (data) => {
-        const { receiverId, message } = data;
-        // Emit message to the receiver's room
-        io.to(receiverId).emit('message', { from: 'user', text: message });
-        console.log(`Message sent to room: ${receiverId}`);
+    socket.on('typing', ({ roomId, message }) => {
+        console.log(`typing ${message} - roomId ${roomId}`);
+        socket.to(roomId).emit('typing', { userId: socket.id, message });
     });
 
-    socket.on('typing', ({ phone, message }) => {
-        // Broadcast the typing event to the same room
-        socket.to(phone).emit('typing', { phone, message });
+    socket.on('sendMessage', ({ roomId, message }) => {
+        console.log(`Message sent - roomId ${roomId}`);
+        socket.to(roomId).emit('receiveMessage', { userId: socket.id, message });
+    });
+
+    socket.on('viewChat', ({ roomId, message }) => {
+        console.log(`User viewing you chat ${roomId}`);
+        socket.to(roomId).emit('viewChat', { userId: socket.id, message });
+    });
+
+    socket.on('offline', ({ roomId, message }) => {
+        console.log(`User viewing you chat ${roomId}`);
+        socket.to(roomId).emit('offline', { userId: socket.id, message });
     });
 
     socket.on('disconnect', () => {

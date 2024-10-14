@@ -22,8 +22,8 @@ exports.sendMessage = async (req, res) => {
 exports.getMessages = async (req, res) => {
     const { receiverId } = req.params;
 
-    console.log('Sender ID:', req.user._id);
-    console.log('Receiver ID:', receiverId);
+    // console.log('Sender ID:', req.user._id);
+    // console.log('Receiver ID:', receiverId);
 
     try {
         const messages = await Message.find({
@@ -33,7 +33,7 @@ exports.getMessages = async (req, res) => {
             ]
         }).sort({ createdAt: 1 });
 
-        console.log('Fetched messages:', messages); // Log the messages
+        // console.log('Fetched messages:', messages); // Log the messages
         res.json(messages);
     } catch (err) {
         console.error('Error fetching messages:', err); // Log the error
