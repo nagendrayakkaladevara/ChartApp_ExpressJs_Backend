@@ -7,6 +7,8 @@ const authRoutes = require('./routes/authRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
 
+const PORT = process.env.PORT || 4000;
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -22,6 +24,10 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+app.get('/', (req, res) => {
+    res.send('Hello from Express on Vercel!');
+});
 
 // Routes - (version on routes)
 app.use('/v1/api/auth', authRoutes);
@@ -103,8 +109,6 @@ io.on('connection', (socket) => {
 });
 
 
-// Start server
-const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
