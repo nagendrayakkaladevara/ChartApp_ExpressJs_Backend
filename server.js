@@ -27,7 +27,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-    res.send('Hello from Express on Vercel!');
+    res.send('Hello from Express app V2!');
 });
 
 // Routes - (version on routes)
