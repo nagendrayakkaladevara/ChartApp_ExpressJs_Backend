@@ -130,67 +130,153 @@ exports.getPendingFriendRequests = async (req, res) => {
 };
 
 
+// exports.handleFriendRequest = async (req, res) => {
+//     const { userId } = req.params; // User who is handling the request
+//     const { friendId, action } = req.body; // Friend who sent the request and action ('accept' or 'reject')
+
+//     try {
+//         // Find the user by their ID
+//         const user = await User.findById(userId);
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
+
+//         // Find the pending friend request in the user's friendRequests array
+//         const friendRequestIndex = user.friendRequests.findIndex(request => request.friendId.equals(friendId) && request.status === 'pending');
+
+//         if (action === 'accept') {
+//             // Accept the friend request
+//             if (friendRequestIndex === -1) {
+//                 return res.status(400).json({ message: 'No pending friend request found.' });
+//             }
+
+//             // Add friend to both users' friends lists
+//             const friend = await User.findById(friendId);
+//             if (!friend) {
+//                 return res.status(404).json({ message: 'Friend not found.' });
+//             }
+
+//             // Check if they are already friends
+//             if (user.friends.includes(friend._id) || friend.friends.includes(user._id)) {
+//                 return res.status(409).json({ message: 'Already friends.' });
+//             }
+
+//             user.friends.push(friend._id);
+//             friend.friends.push(user._id);
+
+//             friend.friendRequests.push({ friendId: user._id, status: 'accepted' });
+
+//             // user.friendRequests.splice(friendRequestIndex, 1);
+//             // friend.friendRequests.splice(friendRequestIndex, 1);
+
+//             await user.save();
+//             await friend.save();
+
+//             return res.status(200).json({ message: 'Friend request accepted successfully.' });
+//         } else if (action === 'reject') {
+//             // Reject the friend request
+//             if (friendRequestIndex === -1) {
+//                 return res.status(400).json({ message: 'No pending friend request found.' });
+//             }
+
+//             const friend = await User.findById(friendId);
+//             if (!friend) {
+//                 return res.status(404).json({ message: 'Friend not found.' });
+//             }
+//             // Remove the friend request
+//             // user.friendRequests.splice(friendRequestIndex, 1);
+//             // await user.save();
+
+//             user.friendRequests.push({ friendId: friendId, status: 'rejected' });
+//             friend.friendRequests.push({ friendId: user._id, status: 'rejected' });
+
+//             return res.status(200).json({ message: 'Friend request rejected successfully.' });
+//         } else {
+//             return res.status(400).json({ message: 'Invalid action. Use "accept" or "reject".' });
+//         }
+//     } catch (err) {
+//         console.error('Error handling friend request:', err);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// };
+
 exports.handleFriendRequest = async (req, res) => {
-    const { userId } = req.params; // User who is handling the request
+    const { userId } = req.params; // User handling the request
     const { friendId, action } = req.body; // Friend who sent the request and action ('accept' or 'reject')
 
     try {
         // Find the user by their ID
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found.' });
         }
 
         // Find the pending friend request in the user's friendRequests array
-        const friendRequestIndex = user.friendRequests.findIndex(request => request.friendId.equals(friendId) && request.status === 'pending');
+        const friendRequestIndex = user.friendRequests.findIndex(request => 
+            request.friendId.equals(friendId) && request.status === 'pending'
+        );
 
+        if (friendRequestIndex === -1) {
+            return res.status(400).json({ message: 'No pending friend request found.' });
+        }
+
+        const friend = await User.findById(friendId);
+        if (!friend) {
+            return res.status(404).json({ message: 'Friend not found.' });
+        }
+
+        // Handle accepting or rejecting the request
         if (action === 'accept') {
-            // Accept the friend request
-            if (friendRequestIndex === -1) {
-                return res.status(400).json({ message: 'No pending friend request found.' });
-            }
-
-            // Add friend to both users' friends lists
-            const friend = await User.findById(friendId);
-            if (!friend) {
-                return res.status(404).json({ message: 'Friend not found.' });
-            }
-
             // Check if they are already friends
             if (user.friends.includes(friend._id) || friend.friends.includes(user._id)) {
                 return res.status(409).json({ message: 'Already friends.' });
             }
 
+            // Add friend to both users' friends lists
             user.friends.push(friend._id);
             friend.friends.push(user._id);
 
-            // Remove the friend request
-            // user.friendRequests.splice(friendRequestIndex, 1);
-            // friend.friendRequests.splice(friendRequestIndex, 1);
+            // Remove the friend request from both users
+            user.friendRequests.splice(friendRequestIndex, 1);
+            const friendRequestInFriendIndex = friend.friendRequests.findIndex(request =>
+                request.friendId.equals(user._id) 
+                // && request.status === 'pending'
+            );
+            if (friendRequestInFriendIndex !== -1) {
+                friend.friendRequests.splice(friendRequestInFriendIndex, 1);
+            }
 
             await user.save();
             await friend.save();
 
             return res.status(200).json({ message: 'Friend request accepted successfully.' });
         } else if (action === 'reject') {
-            // Reject the friend request
-            if (friendRequestIndex === -1) {
-                return res.status(400).json({ message: 'No pending friend request found.' });
+            // Remove the friend request from both users (no need to mark as rejected)
+            user.friendRequests.splice(friendRequestIndex, 1);
+
+            const friendRequestInFriendIndex = friend.friendRequests.findIndex(request =>
+                request.friendId.equals(user._id) 
+                // && request.status === 'pending'
+            );
+            if (friendRequestInFriendIndex !== -1) {
+                friend.friendRequests.splice(friendRequestInFriendIndex, 1);
             }
 
-            // Remove the friend request
-            user.friendRequests.splice(friendRequestIndex, 1);
             await user.save();
+            await friend.save();
 
-            return res.status(200).json({ message: 'Friend request rejected successfully.' });
+            return res.status(200).json({ message: 'Friend request rejected and removed successfully.' });
         } else {
             return res.status(400).json({ message: 'Invalid action. Use "accept" or "reject".' });
         }
     } catch (err) {
         console.error('Error handling friend request:', err);
-        res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ message: 'Server error.' });
     }
 };
+
+
+
 
 exports.getNameAndId = async (req, res) => {
     try {
